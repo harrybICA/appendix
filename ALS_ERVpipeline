@@ -1,0 +1,161 @@
+Before running this pipeline, the reference genome and input BAM files need to be indexed, this can easily be achieved with samtools
+faidx and index respectively. the index files should be stored at the same directory as the original fiels themselves. 
+Lots of the code could be easily integrated into one script, but each section takes a long time to run so for development purposes
+it is easier to keep them separate.
+The following code is a bash script for implementing the first step of the ERV pipeline on the Rosalind HPC:
+
+#!/bin/bash
+
+#$  -j y
+
+#$ -S /bin/bash
+
+#$ -cwd
+
+#$ -N retroseqtest_knownhervs
+
+# How much memory do you need **per core**?
+#$ -l h_vmem=120G
+
+# time to run
+#$ -l h_rt=10:00:00
+
+# Number of cores you need
+#$ -pe smp 1
+export PATH=/users/k1893288/brc_scratch/Miniconda2/bin:$PATH
+export PYTHONPATH=/users/k1893288/brc_scratch/Miniconda2/pkgs/
+module load bioinformatics/samtools/0.1.19
+module load bioinformatics/bcftools/1.9
+module load bioinformatics/bedtools2/2.25.0
+module load general/perl/5.22.0
+perl /users/k1893288/brc_scratch/retroseq/RetroSeq/bin/retroseq.pl -discover -bam /mnt/lustre/groups/herv_study/LP6005869-DNA_C12.bam \
+-eref /mnt/lustre/groups/herv_study/td_retroseq_input.tab -exd ~/brc_scratch/knownhervs_fofn.txt \
+-output /users/k1893288/brc_scratch/LP6005869_C12/retroseq_output_known_hervs.bed
+
+[This code applies retroseq -discover to a given patients BAM file.
+ The -eref option specifies a tab delimitered file. in this tab file, the first column is a repetitive element name e.g. ERV, the
+ second column is a corresponding to a target fasta file that contains the sequence - in this case, it is the repbase LTR5-H sequence.
+ The -exd option links to a text file that contain the path to a bed file which contains a list of known repetitive element locations -
+ in this case, the bed file is the output of repeatmasker applied to hg19 (available at: http://repeatmasker.org/species/hg.html)]
+
+#!/bin/bash
+
+#$  -j y
+
+#$ -S /bin/bash
+
+#$ -cwd
+
+#$ -N retrocalltest
+
+# How much memory do you need **per core**?
+#$ -l h_vmem=60G
+
+# time to run
+#$ -l h_rt=10:00:00
+
+# Number of cores you need
+#$ -pe smp 2
+module load bioinformatics/samtools/0.1.19
+module load bioinformatics/bcftools/1.9
+module load bioinformatics/bedtools2/2.25.0
+module load general/perl/5.22.0
+
+perl /users/k1893288/brc_scratch/retroseq/RetroSeq/bin/retroseq.pl -call -bam /mnt/lustre/groups/herv_study/LP6005115-DNA_B07.bam \
+-input ~/brc_scratch/LP6005115_B07/retroseqoutput/retroseq_output_known_hervs.bed -ref /mnt/lustre/groups/herv_study/hg19.fa \
+-output /users/k1893288/brc_scratch/LP6005115_B07/retroseqoutput/call_output.vcf
+
+The following code extracts bam files from the original patient genome that have been confidently identified as potenetial ERV
+locations:
+
+#!/bin/bash
+
+#$  -j y
+
+#$ -S /bin/bash
+
+#$ -cwd
+
+#$ -N bam_extract
+
+# How much memory do you need **per core**?
+#$ -l h_vmem=80G
+
+# time to run
+#$ -l h_rt=10:00:00
+
+# Number of cores you need
+#$ -pe smp 1
+module load bioinformatics/samtools/0.1.19
+outputdir=~/brc_scratch/LP6005115_B07/bam_extract_output
+retrocall_output=~/brc_scratch/LP6005115_B07/retroseqoutput/call_output.vcf
+grep .*:.*:[5,6,7,8]:* $retrocall_output > $retrocall_output.output
+awk '{print $1 ":" $2-250 "-" $2+250}' $retrocall_output.output > $retrocall_output.hqualpositions
+linecount=$(wc -l $retrocall_output.hqualpositions | awk '{print $1}')
+start=1
+for ((i=$start;  i<=$linecount; i++))
+do
+echo $i
+outlabel=$(cat $retrocall_output.hqualpositions | head -$i | tail -1);
+samtools view -b /mnt/lustre/groups/herv_study/LP6005115-DNA_B07.bam \
+-o $outputdir/$outlabel $(cat $retrocall_output.hqualpositions | head -$i | tail -1);
+done
+rm $retrocall_output.hqualpositions
+rm $retrocall_output.output
+
+[the grep command is used to filter in only the confident locations. The degree of confidence ranges from 1 to 8, in this example 
+ loci with confidence scores 5,6,7,8 are kept, this can be easily changed by changing the numbers in the regex list (line 94).]
+
+The following script converts the bam to fasta files and then assembles the fastas into contigs using cap3. Te contigs are then scanned
+by repeatmasker to confirm the presence of ERV sequences.
+
+ls#$  -j y
+
+#$ -S /bin/bash
+
+#$ -cwd
+
+#$ -N bam2fq2repmask
+
+# How much memory do you need **per core**?
+#$ -l h_vmem=60G
+
+# time to run
+#$ -l h_rt=10:00:00
+
+# Number of cores you need
+#$ -pe smp 2
+
+module load bioinformatics/samtools/0.1.19
+module load bioinformatics/SEQtk/1.2
+module load bioinformatics/cap3/1.0
+export PATH=/users/k1893288/brc_scratch/Miniconda2/bin:$PATH
+export PYTHONPATH=/users/k1893288/brc_scratch/Miniconda2/pkgs/#!/bin/bash
+bamdirectory="/users/k1893288/brc_scratch/LP6005115_B07/bam_extract_output"
+for file in ~/brc_scratch/LP6005115_B07/bam_extract_output/*;
+do
+samtools bam2fq $file | seqtk seq -A > $file.fa
+done
+for file in ~/brc_scratch/LP6005115_B07/bam_extract_output/*.fa;
+do
+formcon $file > $file.con;
+cap3 $file $file.con > $file.log;
+done
+rm ~/brc_scratch/LP6005115_B07/bam_extract_output/*.fa
+rm ~/brc_scratch/LP6005115_B07/bam_extract_output/*.con
+rm ~/brc_scratch/LP6005115_B07/bam_extract_output/*.fa.cap.contigs.qual
+rm ~/brc_scratch/LP6005115_B07/bam_extract_output/*.fa.cap.contigs.links
+rm ~/brc_scratch/LP6005115_B07/bam_extract_output/*.fa.cap.info
+rm ~/brc_scratch/LP6005115_B07/bam_extract_output/*.fa.cap.singlets
+rm ~/brc_scratch/LP6005115_B07/bam_extract_output/*.fa.cap.ace
+rm ~/brc_srcatch/LP6005115_B07/bam_extract_output/*.results
+rm ~/brc_scratch/LP6005115_B07/bam_extract_output/*.log
+for file in ~/brc_scratch/LP6005115_B07/bam_extract_output/*.contigs
+do
+echo $file
+perl ~/brc_scratch/repeatmasker/RepeatMasker/RepeatMasker $file -pa 4 -dir ~/brc_scratch/LP6005115_B07/repeatmaskoutput
+done
+grep ERVK ~/brc_scratch/LP6005115_B07/repeatmaskoutput/* > brc_scratch/LP6005115_B07/final_output.txt
+
+[the -pa option refers to the number of nodes used by repeatmasker, this needs to match with the number of nodes requested from
+ Rosalind.]
