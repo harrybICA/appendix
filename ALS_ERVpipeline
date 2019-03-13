@@ -2,6 +2,8 @@ Before running this pipeline, the reference genome and input BAM files need to b
 faidx and index respectively. the index files should be stored at the same directory as the original fiels themselves. 
 Lots of the code could be easily integrated into one script, but each section takes a long time to run so for development purposes
 it is easier to keep them separate.
+
+
 The following code is a bash script for implementing the first step of the ERV pipeline on the Rosalind HPC:
 
 #!/bin/bash
