@@ -1,0 +1,168 @@
+Requirements: 
+
+KCL Rosalind account. 
+
+1) Miniconda installation: 
+
+SSH into rosalind: 
+
+ssh k.....@login.rosalind.kcl.ac.uk 
+
+Copy, paste and run the following commands into the command line (change the path to an actual directory): 
+
+wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
+chmod +x Miniconda2-latest-Linux-x86_64.sh
+./Miniconda2-latest-Linux-x86_64.sh -b -p /PATH TO WHERE YOU WANT MINICONDA TO BE SAVED 
+
+In the first directory where you are automatically sent when logging into Rosalind there should be a file called .bashrc 
+(to check, use command ‘ls –l –a’ (while in the first directory)). 
+
+Open .bashrc using the command ‘nano .bashrc’ and copy and paste the following two lines at the bottom of the file 
+(again change the paths so that they map to Miniconda bin and Miniconda pkgs).  
+
+export PATH=/PATH TO MINICONDA2/Miniconda2/bin:$PATH  
+export PYTHONPATH=/PATH TO MINCONDA2/Miniconda2/pkgs/ 
+
+Finally, install conda ‘channels’, In the command line copy, paste and run the following commands: 
+
+(it doesn’t matter in which directory you are currently in when you run them) 
+
+conda config --add channels defaults 
+
+conda config --add channels bioconda 
+
+conda config --add channels conda-forge 
+
+Now to install new software (e.g. samtools), simply type the following: 
+
+(again, it doesn’t matter what directory you are in, miniconda knows where to store the downloads). 
+
+conda install samtools 
+
+ 
+This information was taken from the following source: 
+
+https://bitbucket.org/JokevanVugt/projectmine_surfsaragrid_example_script/overview 
+
+Author: Joke Van Vugt, Department of Neurology, University Medical Centre, Ultrecht. 
+
+Date that this method was last successfully used: 01/02/2019 
+
+
+2) Retroseq installation: 
+
+Move to a directory where you want Retroseq to be installed (e.g. brc_scratch). 
+
+Clone Retroseq into this directory: 
+
+git clone https://github.com/tk2/RetroSeq.git 
+
+There are three main dependencies for Retroseq which can be loaded from Rosalind and conda, the following code should be included in a script before Retroseq.pl is called: 
+
+module load bioinformatics/samtools/0.1.19 
+
+module load bioinformatics/bedtools2/2.25.0 
+
+Exonerate should be installed using conda install (see above).  
+
+Link to Retroseq for more information: 
+
+https://github.com/tk2/RetroSeq  
+
+Author: Thomas Keane, EMBL-EBI 
+
+
+3) Repeatmasker installation: 
+
+Although Repeatmasker can be installed via minconda, when I used this method it did not install properly, 
+here is the manual installation that did work: 
+
+3a) install HMMER: 
+
+Quick installation instructions  
+
+Download hmmer-3.1b2.tar.gz from http://hmmer.org/; unpack it: 
+
+wget ftp://selab.janelia.org/pub/software/hmmer3/3.1b2/hmmer-3.1b2.tar.gz  
+
+tar xf hmmer-3.1b2.tar.gz 
+
+cd hmmer-3.1b1  
+
+If you have downloaded a variant ‘with binaries’, the pre-compiled binaries are found in the directory ./binaries. 
+You may copy these into a directory of your choosing, or simply run them from here 
+(for example, by adding this directory to your PATH variable). 
+If you have downloaded the HMMER source code, you’ll need to compile the software with configure and make:  
+
+(it is important that you are in the hmmer directory that contains the configure and make executable files) 
+
+ ./configure  
+
+./make  
+
+To compile and run a test suite to make sure all is well, you can optionally do:  
+
+./make check  
+
+All these tests should pass. 
+
+These instructions are directly copied from http://eddylab.org/software/hmmer3/3.1b2/Userguide.pdf  
+
+Authors: Sean j Eddy, Travis J wheeler et al. 
+
+Date that this method was last successfully used: 01/02/2019 
+
+
+3b) install TRF 
+
+conda install TRF 
+
+3c) install Repeatmasker: 
+
+Download a zipped .tar file from http://www.repeatmasker.org/RMDownload.html 
+
+Copy the file into the desired directory and unpack it using the following commands: 
+
+gunzip RepeatMasker-open-4-#-#.tar.gz 
+
+tar xvf RepeatMasker-open-4-#-#.tar 
+
+ 
+
+Optionally, you can include the repbase library of DNA repeat elements, this requires a repbase account that can take a day to be 
+authorised, obtained from following site: 
+
+https://www.girinst.org/accountservices/register.php 
+
+From girinst.org, download the repeatmasker specific repbase data set e.g.  RepBaseRepeatMaskerEdition-20181026.tar.gz 
+
+Copy this file into the RepeatMasker directory that was created when you unpacked RepeatMasker in the previous step.  
+
+Now, unpack the repbase library as before.  
+
+gunzip RepBaseRepeatMaskerEdition-########.tar.gz 
+
+tar xvf RepBaseRepeatMaskerEdition-########.tar 
+
+rm RepBaseRepeatMaskerEdition-########.tar 
+
+
+(this time the tar file is removed after unpacking is complete. The files will be automatically be put in the right place as 
+long as the library is opened in the correct directory (e.g. ~/brc_scratch/RepeatMasker). 
+
+Finally, Repeatmasker needs to be ‘configured’.  
+
+Go to the RepeatMasker directory and run the configure executable file: 
+
+module load general/perl/5.22.0 
+
+Perl ./configure 
+
+This will start a configuration progress where you will be asked to specify the locations of hmmer and perl etc. Perl is downloaded with conda and hmmer will be wherever you stored it. I quit the configuration process by closing the command line window multiple times while I figured out exactly what I needed to do with no problems – so it seems safe to quit half way through if you need to check the locations of certain files.  
+
+
+This information is from the following sorce: 
+http://www.repeatmasker.org/RMDownload.html 
+Authors: Arian Smit, Robert Hubley, Gustavo Glusman 
+
+
